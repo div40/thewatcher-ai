@@ -1,5 +1,4 @@
 "use client";
-import FeatureDetails from "@/components/FeatureDetails";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,14 +26,17 @@ import "@tensorflow/tfjs-backend-cpu";
 import "@tensorflow/tfjs-backend-webgl";
 import { DetectedObject, ObjectDetection } from "@tensorflow-models/coco-ssd";
 import { drawOnCanvas } from "@/utils/draw";
+import { formatDate } from "@/utils/formatDate";
 
 type Props = {};
 
 let interval: any = null;
+let stopTimeout: any = null;
 
 const HomePage = (props: Props) => {
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const [mirrored, setMirrored] = useState<boolean>(true);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -43,11 +45,43 @@ const HomePage = (props: Props) => {
   const [model, setModel] = useState<ObjectDetection>();
   const [loading, setLoading] = useState(false);
 
+  //  media recorder initialization
+  useEffect(() => {
+    if (webcamRef && webcamRef.current) {
+      const stream = (webcamRef.current.video as any).captureStream();
+
+      if (stream) {
+        mediaRecorderRef.current = new MediaRecorder(stream);
+
+        mediaRecorderRef.current.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            const recordedBlob = new Blob([e.data], { type: "video" });
+
+            const videoURL = URL.createObjectURL(recordedBlob);
+
+            const a = document.createElement("a");
+            a.href = videoURL;
+            a.download = `${formatDate(new Date())}.webm`;
+            a.click();
+          }
+        };
+
+        mediaRecorderRef.current.onstart = (e) => {
+          setIsRecording(true);
+        };
+        mediaRecorderRef.current.onstop = (e) => {
+          setIsRecording(false);
+        };
+      }
+    }
+  }, [webcamRef]);
+
   useEffect(() => {
     setLoading(true);
     initModel();
   }, []);
 
+  // load model
   async function initModel() {
     const loadedModel: ObjectDetection = await cocossd.load({
       base: "mobilenet_v2",
@@ -74,6 +108,18 @@ const HomePage = (props: Props) => {
 
       resizeCanvas(canvasRef, webcamRef);
       drawOnCanvas(mirrored, predictions, canvasRef.current?.getContext("2d"));
+
+      // automatically start recording when a person is detected
+      let personDetected: boolean = false;
+      if (predictions.length > 0) {
+        predictions.forEach((prediction) => {
+          personDetected = prediction.class === "person";
+        });
+
+        if (personDetected && autoRecordEnabled) {
+          startRecording(true);
+        }
+      }
     }
   };
 
@@ -83,11 +129,37 @@ const HomePage = (props: Props) => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [webcamRef.current, model, mirrored]);
+  }, [webcamRef.current, model, mirrored, autoRecordEnabled]);
 
-  const takeScreenshot = () => {};
+  const toggleTakeScreenshot = () => {};
 
-  const startRecording = () => {};
+  const toggleStartRecording = () => {
+    if (!webcamRef.current) {
+      toast("Camera not found! Please refresh.");
+    }
+    if (mediaRecorderRef.current?.state == "recording") {
+      mediaRecorderRef.current.requestData();
+      clearTimeout(stopTimeout);
+      mediaRecorderRef.current.stop();
+      toast("Recording saved to downloads");
+    } else {
+      startRecording(false);
+    }
+  };
+
+  function startRecording(doBeep: boolean) {
+    if (webcamRef.current && mediaRecorderRef.current?.state !== "recording") {
+      mediaRecorderRef.current?.start();
+      doBeep && beep(volume);
+
+      stopTimeout = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.requestData();
+          mediaRecorderRef.current.stop();
+        }
+      }, 30000);
+    }
+  }
 
   const toggleAutoRecord = () => {
     if (autoRecordEnabled) {
@@ -133,13 +205,17 @@ const HomePage = (props: Props) => {
           </div>
           <div className="flex flex-col gap-2">
             <Separator className="my-2" />
-            <Button variant={"outline"} size={"icon"} onClick={takeScreenshot}>
+            <Button
+              variant={"outline"}
+              size={"icon"}
+              onClick={toggleTakeScreenshot}
+            >
               <Camera />
             </Button>
             <Button
               variant={isRecording ? "destructive" : "outline"}
               size={"icon"}
-              onClick={startRecording}
+              onClick={toggleStartRecording}
             >
               <Video />
             </Button>
@@ -208,3 +284,54 @@ function resizeCanvas(
     canvas.width = videoWidth;
   }
 }
+
+const FeatureDetails = () => {
+  return (
+    <div className="text-xs text-muted-foreground">
+      <ul className="space-y-4">
+        <li>
+          <strong>Dark Mode/ System Theme 🌗</strong>
+          <p>Toggle between dark mode and system theme.</p>
+        </li>
+        <li>
+          <strong>Mirror Camera ↔️</strong>
+          <p>Adjust horizontal orientation.</p>
+        </li>
+        <Separator />
+        <li>
+          <strong>Take Pictures 📸</strong>
+          <p>Capture snapshots at any moment from the video feed.</p>
+        </li>
+        <li>
+          <strong>Manual Video Recording 📽️</strong>
+          <p>Manually record video clips as needed.</p>
+        </li>
+        <Separator />
+        <li>
+          <strong>Enable/Disable Auto Record 🚫</strong>
+          <p>Enable or disable automatic video recording whenever required.</p>
+        </li>
+        <li>
+          <strong>Volume Slider 🔊</strong>
+          <p>Adjust the volume level of the notifications.</p>
+        </li>
+        <li>
+          <strong>Camera Feed Highlighting 🎨</strong>
+          <p>
+            Highlights persons in <span style={{ color: "#FF0F0F" }}>red</span>{" "}
+            and other objects in <span style={{ color: "#00B612" }}>green</span>
+            .
+          </p>
+        </li>
+        <Separator />
+        <li className="space-y-4">
+          <strong>Share your thoughts 💬 </strong>
+          {/* <SocialMediaLinks/> */}
+          <br />
+          <br />
+          <br />
+        </li>
+      </ul>
+    </div>
+  );
+};

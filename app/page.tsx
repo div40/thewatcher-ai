@@ -27,6 +27,7 @@ import "@tensorflow/tfjs-backend-webgl";
 import { DetectedObject, ObjectDetection } from "@tensorflow-models/coco-ssd";
 import { drawOnCanvas } from "@/utils/draw";
 import { formatDate } from "@/utils/formatDate";
+import Link from "next/link";
 
 type Props = {};
 
@@ -131,7 +132,20 @@ const HomePage = (props: Props) => {
     return () => clearInterval(interval);
   }, [webcamRef.current, model, mirrored, autoRecordEnabled]);
 
-  const toggleTakeScreenshot = () => {};
+  const toggleTakeScreenshot = () => {
+    if (!webcamRef.current) {
+      toast("Camera not found! Please refresh.");
+    } else {
+      const imgSrc = webcamRef.current.getScreenshot();
+      const blob = base64toBlob(imgSrc);
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${formatDate(new Date())}.png`;
+      a.click();
+    }
+  };
 
   const toggleStartRecording = () => {
     if (!webcamRef.current) {
@@ -268,28 +282,11 @@ const HomePage = (props: Props) => {
   );
 };
 
-export default HomePage;
-
-// canvas height and width matches video
-function resizeCanvas(
-  canvasRef: React.RefObject<HTMLCanvasElement>,
-  webcamRef: React.RefObject<Webcam>
-) {
-  const canvas = canvasRef.current;
-  const video = webcamRef.current?.video;
-
-  if (canvas && video) {
-    const { videoHeight, videoWidth } = video;
-    canvas.height = videoHeight;
-    canvas.width = videoWidth;
-  }
-}
-
-const FeatureDetails = () => {
+function FeatureDetails() {
   return (
     <div className="text-xs text-muted-foreground">
       <ul className="space-y-4">
-        <li>
+        <li className="mt-1">
           <strong>Dark Mode/ System Theme 🌗</strong>
           <p>Toggle between dark mode and system theme.</p>
         </li>
@@ -324,14 +321,24 @@ const FeatureDetails = () => {
           </p>
         </li>
         <Separator />
-        <li className="space-y-4">
-          <strong>Share your thoughts 💬 </strong>
-          {/* <SocialMediaLinks/> */}
-          <br />
-          <br />
-          <br />
-        </li>
       </ul>
     </div>
   );
-};
+}
+
+export default HomePage;
+
+// canvas height and width matches video
+function resizeCanvas(
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  webcamRef: React.RefObject<Webcam>
+) {
+  const canvas = canvasRef.current;
+  const video = webcamRef.current?.video;
+
+  if (canvas && video) {
+    const { videoHeight, videoWidth } = video;
+    canvas.height = videoHeight;
+    canvas.width = videoWidth;
+  }
+}

@@ -130,7 +130,7 @@ const HomePage = (props: Props) => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [webcamRef.current, model, mirrored, autoRecordEnabled]);
+  }, [webcamRef.current, model, mirrored, autoRecordEnabled, runPrediction]);
 
   const toggleTakeScreenshot = () => {
     if (!webcamRef.current) {
@@ -188,22 +188,22 @@ const HomePage = (props: Props) => {
     <div className="flex h-screen">
       {/* webcam container */}
       <div className="relative">
-        <div className="relative h-screen w-full">
+        <div className="relative w-full h-screen">
           <Webcam
             ref={webcamRef}
             mirrored={mirrored}
-            className="h-full w-full object-contain p-2"
+            className="object-contain w-full h-full p-2"
           />
           {/* show detected objects using canvas */}
           <canvas
             ref={canvasRef}
-            className="absolute top-0 left-0 h-full w-full object-contain"
+            className="absolute top-0 left-0 object-contain w-full h-full"
           ></canvas>
         </div>
       </div>
       {/* right container */}
       <div className="flex flex-row flex-1">
-        <div className="border-primary/5 border-2 max-w-xs flex flex-col gap-2 justify-between shadow-md rounded-md p-4">
+        <div className="flex flex-col justify-between max-w-xs gap-2 p-4 border-2 rounded-md shadow-md border-primary/5">
           <div className="flex flex-col gap-2">
             <ThemeToggle />
             <Button
@@ -269,12 +269,12 @@ const HomePage = (props: Props) => {
             </Popover>
           </div>
         </div>
-        <div className="h-full flex-1 py-4 px-2 overflow-y-scroll">
+        <div className="flex-1 h-full px-2 py-4 overflow-y-scroll">
           <FeatureDetails />
         </div>
       </div>
       {loading && (
-        <div className="z-50 absolute h-full w-full flex items-center justify-center bg-primary-foreground">
+        <div className="absolute z-50 flex items-center justify-center w-full h-full bg-primary-foreground">
           Getting everything ready . . . <Rings height={50} color="red" />
         </div>
       )}
